@@ -89,8 +89,11 @@ body{
     radial-gradient(ellipse 55% 45% at 12% 62%,rgba(156,175,136,.26) 0%,transparent 60%);
 }
 .scan{display:none}
-#app{position:relative;z-index:3;height:100%;display:flex;flex-direction:column}
-.screen{display:none;flex:1;min-height:0}
+#app{position:relative;z-index:3;height:100%;display:flex;flex-direction:column;overflow:hidden}
+/* main 是 #app 的 flex item，必须占满剩余空间并允许内部滚动，
+   否则 .screen 的 flex:1 失效，页面会被内容顶出视口且无法滚动 */
+#main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.screen{display:none;flex:1;min-height:0;min-width:0}
 .screen.active{display:flex}
 
 /* ============================================================
@@ -156,7 +159,8 @@ body{
 /* ============================================================
    首页
    ============================================================ */
-#menu{flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:0 0 28px}
+#menu{flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:0 0 8px;
+  scroll-padding-bottom:96px}
 .menu-inner{width:min(1080px,100%);margin:0 auto;padding:26px 20px 0;display:flex;flex-direction:column;gap:18px}
 
 .logo-block{text-align:center;position:relative;padding:14px 0 4px}
@@ -274,7 +278,29 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
 .stat-box .vl.p{color:var(--lilac-t)}
 .stat-box .vl.g{color:var(--moss-t)}
 
-.start-wrap{display:flex;justify-content:center;padding:8px 0 4px}
+/* 吸底操作条：固定在视口底部，始终可见可点 */
+.start-dock{
+  flex:none;position:relative;z-index:20;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(242,237,228,.72),rgba(242,237,228,.96) 45%);
+  border-top:2px solid var(--ink);
+  box-shadow:0 -6px 20px -8px rgba(44,40,37,.28);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.start-dock-inner{
+  width:min(1080px,100%);margin:0 auto;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;
+}
+.start-summary{
+  font-size:13px;font-weight:700;color:var(--ink2);letter-spacing:.04em;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.start-dock .btn{flex:none;white-space:nowrap}
+@media (max-width:420px){
+  .start-summary{display:none}
+  .start-dock-inner{justify-content:center}
+  .start-dock .btn{width:100%}
+}
 .howto{font-size:12.5px;line-height:2;color:var(--ink2)}
 .howto b{color:var(--ink);font-weight:700}
 .howto .k{
@@ -574,6 +600,24 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
 #game.has-pad .keypad button{height:clamp(38px,5.6vh,48px)}
 #game.has-pad .keypad button.k-ok{height:clamp(36px,5vh,42px);font-size:15px}
 #game.has-pad .game-foot{padding:5px 10px 7px}
+/* 极矮屏（笔记本 640px 高等）：有数字键盘时必须进一步压缩，
+   否则键盘确认键会压到底部按钮上、舞台内容被裁切 */
+@media (max-height:720px){
+  #game.has-pad .stage{gap:5px;padding:6px 12px 4px}
+  #game.has-pad .ring-wrap{width:clamp(72px,11vh,92px);height:clamp(72px,11vh,92px)}
+  #game.has-pad .ring-t{font-size:16px}
+  #game.has-pad .q-card{padding:8px 10px}
+  #game.has-pad .q-text{font-size:clamp(21px,5.6vw,32px)}
+  #game.has-pad .q-fb{margin-top:5px;min-height:17px;font-size:12px}
+  #game.has-pad .answer-row{gap:8px}
+  #game.has-pad #answerInput{height:42px;font-size:22px}
+  #game.has-pad #btnSubmit{height:42px;padding:0 16px}
+  #game.has-pad .keypad{gap:5px}
+  #game.has-pad .keypad button{height:clamp(32px,4.6vh,40px);font-size:16px}
+  #game.has-pad .keypad button.k-ok{height:clamp(30px,4.2vh,36px);font-size:14px}
+  #game.has-pad .game-foot{padding:3px 10px 5px}
+  #game.has-pad .game-foot .btn{padding:6px 12px;font-size:12px}
+}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .banner.go{opacity:1;transform:translate(-50%,-50%)}
@@ -686,10 +730,6 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
         </div>
       </div>
 
-      <div class="start-wrap">
-        <button class="btn primary big" id="btnStart" type="button">开始游戏</button>
-      </div>
-
       <div class="panel">
         <h2 class="panel-title">玩法说明 HOW TO PLAY</h2>
         <div class="howto">
@@ -784,6 +824,14 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
       </div>
     </div>
   </section>
+
+  <!-- 吸底操作条：任何屏幕尺寸下「开始游戏」都常驻可见，无需滚动 -->
+  <div class="start-dock" id="startDock">
+    <div class="start-dock-inner">
+      <div class="start-summary" id="startSummary">极速挑战 · LV.2 进阶</div>
+      <button class="btn primary big" id="btnStart" type="button">开始游戏</button>
+    </div>
+  </div>
 </main>
 </div>
 
@@ -1608,10 +1656,17 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
       b.innerHTML = '<div class="dl">LV.' + lv + '</div><div class="dn">' + d.name +
         '</div><div class="dt">' + (d.limit / 1000) + 's / 题</div>';
       b.addEventListener('click', function () {
-        save.difficulty = lv; C.writeSave(save); Sound.click(); renderDifficulties();
+        save.difficulty = lv; C.writeSave(save); Sound.click(); renderDifficulties(); renderStartSummary();
       });
       el.diffs.appendChild(b);
     });
+  }
+  // 吸底条摘要：实时显示当前选择的模式与难度
+  function renderStartSummary() {
+    var el2 = $('startSummary');
+    if (!el2) return;
+    var d = C.DIFFICULTY[save.difficulty];
+    el2.textContent = C.MODE_NAME[save.mode] + ' · LV.' + save.difficulty + ' ' + d.name;
   }
   function renderMenuStats() {
     el.stScore.textContent = save.highScore;
@@ -1650,7 +1705,7 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
 
   el.modes.addEventListener('click', function (e) {
     var card = e.target.closest('.mode-card'); if (!card) return;
-    save.mode = card.dataset.mode; C.writeSave(save); Sound.click();
+    save.mode = card.dataset.mode; C.writeSave(save); Sound.click(); renderStartSummary();
     Array.prototype.forEach.call(el.modes.querySelectorAll('.mode-card'), function (c) {
       c.classList.toggle('sel', c === card);
     });
@@ -2050,6 +2105,7 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
     switchScreen('menu');
     renderMenuStats();
     renderDifficulties();
+    renderStartSummary();
     syncMenuControls();
   }
 
@@ -2273,6 +2329,7 @@ h2.panel-title{font-size:12px;margin:0 0 13px;line-height:1.4}
     BG.resize(); FX.resize(); Deck.resize();
     renderDifficulties();
     renderMenuStats();
+    renderStartSummary();
     syncMenuControls();
     applyKeypadVisibility();
     buildKeypad();
